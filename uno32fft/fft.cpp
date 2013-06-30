@@ -17,8 +17,6 @@ void fft2point(int* dataA,int* dataB,int pos1,int pos2);
 void init(int* tfstoreA,int* tfstoreB,int* brLookup);
 void fft(int* dataA, int* dataB,int* wA,int* wB,int* bitRLocations);
 void fill(int* data,int start,int end,int num,int incNum);
-double complexMuxA(int a1,int b1,int a2,int b2);
-double complexMuxB(int a1,int b1,int a2,int b2);
 int lookUpSin(int k);
 int lookUpCos(int k);
 int doPow(int x,int y);
@@ -141,8 +139,11 @@ void fft(int* dataA, int* dataB,int* wA,int* wB,int* bitRLocations)
 				tf_pos = currButterfly*fft_size>>loop; //This does the eqivalent of dividing by butteflySize
 
 				///Pre-multiply all the second terms with the twiddle factors
-				swapA = complexMuxA(dataA[pos2], dataB[pos2], wA[tf_pos], wB[tf_pos]);
-				swapB = complexMuxB(dataA[pos2], dataB[pos2], wA[tf_pos], wB[tf_pos]);
+				//swapA = complexMuxA(dataA[pos2], dataB[pos2], wA[tf_pos], wB[tf_pos]);
+				//swapB = complexMuxB(dataA[pos2], dataB[pos2], wA[tf_pos], wB[tf_pos]);
+
+				swapA = (dataA[pos2]*wA[tf_pos] - dataB[pos2]*wB[tf_pos])>>8;
+				swapB = (dataA[pos2]*wB[tf_pos] + dataB[pos2]*wA[tf_pos])>>8;
 
 				//Some hacking going to happen here:
 				/*
@@ -188,20 +189,6 @@ void fill(int* data,int start,int end,int num,int incNum)
 	//Split into two sections
 	fill(data,start,start+(end-start)/2,num,2*incNum);
 	fill(data,start+(end-start)/2,end,num+incNum,2*incNum);
-}
-
-
-/*
-Two functions for doing the complex multiplications
-*/
-double complexMuxA(int a1,int b1,int a2,int b2)
-{
-	return (a1*a2-b1*b2)>>8;
-}
-
-double complexMuxB(int a1,int b1,int a2,int b2)
-{
-	return (a1*b2+b1*a2)>>8;
 }
 
 int lookUpSin(int k)
