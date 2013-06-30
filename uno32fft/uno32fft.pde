@@ -6,13 +6,19 @@
  */
 #import "fft.h"
 
- 
-int data32A[] = {510,-66,55,466,-435,-305,83,59,255,59,83,-305,-435,466,55,-66,510,-490,-416,366,-75,195,278,-224,-255,-224,278,195,-75,366,-416,-490};
-int data32B[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+#define fft_size 64
 
 void setup()
 {                
   int loop = 0;
+  
+  int data32A[] = {510,-66,55,466,-435,-305,83,59,255,59,83,-305,-435,466,55,-66,510,-490,-416,366,-75,195,278,-224,-255,-224,278,195,-75,366,-416,-490,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  int data32B[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  
+  int tfstoreA[fft_size];
+  int tfstoreB[fft_size];
+  int brLookup[fft_size];
+
   
   // initialize the digital pin as an output.
   // Pin 13 has an LED connected on most Arduino boards:
@@ -20,21 +26,23 @@ void setup()
   Serial.begin(9600);
   Serial.println("Starting");
   
-  //Do the fft
+  //Do the initialization
   int startTime = micros();
-  fft(data32A,data32B,32);
+  init(tfstoreA,tfstoreB,brLookup);
   int endTime = micros();
-  
-  
-  Serial.print("FFT started at ");
-  Serial.print(startTime);
-  Serial.print(", and endedat");
-  Serial.print(endTime);
-  Serial.print("\nTotal time of ");
+  Serial.print("\nInitializing took ");
   Serial.print(endTime-startTime);
   Serial.print("\n");
   
-  for (loop=0; loop<32;loop++)
+  //Do the FFT
+  startTime = micros();
+  fft(data32A,data32B,tfstoreA,tfstoreB,brLookup);
+  endTime = micros();
+  Serial.print("\n64 Point FFT took ");
+  Serial.print(endTime-startTime);
+  Serial.print("\n");
+  
+  for (loop=0; loop<fft_size;loop++)
   {
     Serial.print(loop);
     Serial.print("\t");

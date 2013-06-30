@@ -5,18 +5,23 @@ This is an implementation of the Cooley-Turkey FFT algorithm. It is supposed
 to be used on a microcontroller, so it will be optimized for low-memory, no
 floating point numbers and no math library.
 */
+
 #include "fft.h"
-#import <math.h>
+
+#define fft_size 64
+
 /*
 Note: not using structs or anything fancy, because this needs to go on a microprocessor.
 */
 void fft2point(int* dataA,int* dataB,int pos1,int pos2);
-void fft(int* data,int* result,int N);
+void init(int* tfstoreA,int* tfstoreB,int* brLookup);
+void fft(int* dataA, int* dataB,int* wA,int* wB,int* bitRLocations);
 void fill(int* data,int start,int end,int num,int incNum);
 double complexMuxA(int a1,int b1,int a2,int b2);
 double complexMuxB(int a1,int b1,int a2,int b2);
-int lookUpSin(int k,int N);
-int lookUpCos(int k,int N);
+int lookUpSin(int k);
+int lookUpCos(int k);
+int doPow(int x,int y);
 
 int sinLookUp[] = {
 0,6,13,19,25,31,38,44,
@@ -31,9 +36,31 @@ int sinLookUp[] = {
 };
 
 /*
+This function does the initialization for the FFT. This is to save execution
+time at the expense of memory. The function calculates and stores the twiddle
+factors, and the bit-reversed lookup. The computed values should be passed
+to the main fft function.
+*/
+void init(int* tfstoreA,int* tfstoreB,int* brLookup)
+{
+	int loop = 0;
+
+	//Calculate and store the twiddle factors using the sin lookup table
+	for (loop=0;loop<fft_size/2;loop++)
+	{
+		tfstoreA[loop] = lookUpCos(loop);
+		tfstoreB[loop] = lookUpSin(loop);
+	}
+
+	//Calculate he bit-reversed addresses.
+	fill(brLookup,0,fft_size,0,1);
+}
+
+/*
 This function does a simply butterfly. It should not be used, rather use fft()
 to do a 2 point fft if you need it.
 */
+
 void fft2point(int* dataA,int* dataB,int pos1,int pos2)
 {
 	int temp1 = dataA[pos1];
@@ -54,14 +81,8 @@ This function does the fft.
    dataB is an array with size N
    N is the size
 */
-void fft(int* dataA, int* dataB,int N)
+void fft(int* dataA, int* dataB,int* wA,int* wB,int* bitRLocations)
 {
-  
-	//First, calculate the twiddle factors. Store as a double for percision.
-	int wA[N/2];		    //Twiddle Factors
-	int wB[N/2];
-	int bitRLocations[N];   //Bit reversed Locations
-
 	//Loop variables
 	int loop = 0;
 	int innerLoop = 0;
@@ -72,18 +93,17 @@ void fft(int* dataA, int* dataB,int N)
 	int pos1,pos2;
 	int swapA;
 	int swapB;
+        int tf_pos = 0;
 
-
-	for (loop=0;loop<N/2;loop++)
-	{
-		wA[loop] = lookUpCos(loop,N);
-		wB[loop] = lookUpSin(loop,N);
-	}
-
-	//The bit-reversed addresses.
-	fill(bitRLocations,0,N,0,1);
-	//Reverse the data points
-	for (loop=0;loop<N;loop++)
+	//Reverse the data points. 
+	/*
+	Note: The data is placed at the bit-reversed locations here. This
+	operation executes in O(N) time, so I don't regard it as too much
+	overhead. Doing it this way allows the function to do the fft in-place.
+	If the data is not moved around a new buffer needs to be created for the
+	result of the fft.
+	*/
+	for (loop=0;loop<fft_size;loop++)
 	{
 		if (bitRLocations[loop]>loop)
 		{
@@ -103,11 +123,11 @@ void fft(int* dataA, int* dataB,int N)
 	//The outer loop is over the different sized butterflies
 	//The inner loop is over the different sets of the same sized butterflies
 	//The currButterfly loop is over the butterflies in the same set
-	for (loop=1; pow(2,loop)<=N; loop+=1)
+	for (loop=1; doPow(2,loop)<=fft_size; loop+=1)
 	{
-		butterflySize = pow(2,loop);
+		butterflySize = doPow(2,loop);
 		//Internal Loop
-		for (innerLoop=0; innerLoop<N; innerLoop+=butterflySize)
+		for (innerLoop=0; innerLoop<fft_size; innerLoop+=butterflySize)
 		{
 			//Figure out what butterflies to do
 			for (currButterfly=0;currButterfly<butterflySize/2;currButterfly+=1)
@@ -116,9 +136,11 @@ void fft(int* dataA, int* dataB,int N)
 				pos1 = innerLoop+currButterfly;
 				pos2 = innerLoop+currButterfly+butterflySize/2;
 
+				tf_pos = currButterfly*fft_size/(butterflySize);
+
 				///Pre-multiply all the second terms with the twiddle factors
-				swapA = complexMuxA(dataA[pos2],dataB[pos2],wA[currButterfly*N/(butterflySize)],wB[currButterfly*N/(butterflySize)]);
-				swapB = complexMuxB(dataA[pos2],dataB[pos2],wA[currButterfly*N/(butterflySize)],wB[currButterfly*N/(butterflySize)]);
+				swapA = complexMuxA(dataA[pos2], dataB[pos2], wA[tf_pos], wB[tf_pos]);
+				swapB = complexMuxB(dataA[pos2], dataB[pos2], wA[tf_pos], wB[tf_pos]);
 				dataA[pos2] = swapA;
 				dataB[pos2] = swapB;
 			
@@ -127,7 +149,7 @@ void fft(int* dataA, int* dataB,int N)
 			}
 		}
 	}
-	//done
+	//done :-)
 }
 
 /*
@@ -159,38 +181,53 @@ double complexMuxB(int a1,int b1,int a2,int b2)
 	return (a1*b2+b1*a2)>>8;
 }
 
-int lookUpSin(int k,int N)
+int lookUpSin(int k)
 {
 	//There are 64 points in the loopup table
 	int M = 64;
 	int lookupPos = 0;
 
-	if (k<N/4)
+	if (k<fft_size/4)
 	{
 		//First part of the sine wave
-		lookupPos = 4*M*k/N;
+		lookupPos = 4*M*k/fft_size;
 	}
 	else
 	{
 		//Second part of the sine wave
-		lookupPos = 2*M-4*M*k/N;
+		lookupPos = 2*M-4*M*k/fft_size;
 	}
 	return -sinLookUp[lookupPos];
 }
 
-int lookUpCos(int k,int N)
+int lookUpCos(int k)
 {
 	int M = 64;
 	int lookupPos = 0;
 
-	if (k<N/4)
+	if (k<fft_size/4)
 	{
-		lookupPos = M-4*M*k/N;
+		lookupPos = M-4*M*k/fft_size;
 		return sinLookUp[lookupPos];
 	}
 	else
 	{
-		lookupPos = 4*M*k/N-M;
+		lookupPos = 4*M*k/fft_size-M;
 		return -sinLookUp[lookupPos];
 	}
+}
+
+
+/*
+Calculates x^y, so that I don't need <math.h>
+*/
+int doPow(int x,int y)
+{
+	int ans =x;
+	int l = 0;
+	for (l=0;l<y-1;l++)
+	{
+		ans=ans*x;
+	}
+	return ans;
 }
