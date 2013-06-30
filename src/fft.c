@@ -89,6 +89,7 @@ void fft(int* dataA, int* dataB,int* wA,int* wB,int* bitRLocations)
 
 	//Size and position variables
 	int butterflySize = 0;
+	int butterflySizeHalf = 0;
 	int currButterfly = 0;
 	int pos1,pos2;
 	int swapA;
@@ -126,26 +127,49 @@ void fft(int* dataA, int* dataB,int* wA,int* wB,int* bitRLocations)
 	for (loop=1; doPow(2,loop)<=fft_size; loop+=1)
 	{
 		butterflySize = doPow(2,loop);
+		butterflySizeHalf = butterflySize>>1; //Optimization, so we don't need to do this everytime we need it. It is basically divide by 2
 		//Internal Loop
 		for (innerLoop=0; innerLoop<fft_size; innerLoop+=butterflySize)
 		{
 			//Figure out what butterflies to do
-			for (currButterfly=0;currButterfly<butterflySize/2;currButterfly+=1)
+			for (currButterfly=0;currButterfly<butterflySizeHalf;currButterfly+=1)
 			{
 				//Get the data positions
 				pos1 = innerLoop+currButterfly;
-				pos2 = innerLoop+currButterfly+butterflySize/2;
+				pos2 = innerLoop+currButterfly+butterflySizeHalf;
 
-				tf_pos = currButterfly*fft_size/(butterflySize)
+				tf_pos = currButterfly*fft_size>>loop; //This does the eqivalent of dividing by butteflySize
 
 				///Pre-multiply all the second terms with the twiddle factors
 				swapA = complexMuxA(dataA[pos2], dataB[pos2], wA[tf_pos], wB[tf_pos]);
 				swapB = complexMuxB(dataA[pos2], dataB[pos2], wA[tf_pos], wB[tf_pos]);
+
+				//Some hacking going to happen here:
+				/*
 				dataA[pos2] = swapA;
 				dataB[pos2] = swapB;
 			
-				//Do the butterfly
-				fft2point(dataA,dataB,pos1,pos2);
+				//Do the butterfly. This used to be in it's own function, but this is much faster
+				swapA = dataA[pos1];
+				swapB = dataB[pos1];
+
+				//First part of the butterfly
+				dataA[pos1] = swapA+dataA[pos2];
+				dataB[pos1] = swapB+dataB[pos2];
+
+				//Second part of the butterfly
+				dataA[pos2] = swapA-dataA[pos2];
+				dataB[pos2] = swapB-dataB[pos2];*/
+
+				//Mental note: swapA and swapB already contain dataA[pos] and dataB[pos2] assign them first
+				//The data was placed into swapA and swapB by the multiply functions above
+				//Do pos2 data first, because pos2's values are place in swap
+				dataA[pos2] = dataA[pos1]-swapA;
+				dataB[pos2] = dataB[pos1]-swapB;
+				
+				dataA[pos1] = dataA[pos1]+swapA;
+				dataB[pos1] = dataB[pos1]+swapB;
+
 			}
 		}
 	}
