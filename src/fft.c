@@ -16,11 +16,28 @@ floating point numbers and no math library.
 /*
 Note: not using structs or anything fancy, because this needs to go on a microprocessor.
 */
+void init(double* tfstoreA,double* tfStoreB,int* brLookup);
 void fft2point(double* dataA,double* dataB,int pos1,int pos2);
-void fft(double* data,double* result);
+void fft(double* data,double* result,double* tfstoreA,double* tfStoreB,int* brLookup);
 void fill(int* data,int start,int end,int num,int incNum);
 double complexMuxA(double a1,double b1,double a2,double b2);
 double complexMuxB(double a1,double b1,double a2,double b2);
+
+void init(double* tfstoreA,double* tfstoreB,int* brLookup)
+{
+	int loop =0;
+
+	for (loop=0;loop<fft_size/2;loop++)
+	{
+		//Calculate the cos term
+		tfstoreA[loop] = cos(2*PI*(double)loop/(double)fft_size);
+		//Calculate the sin term
+		tfstoreB[loop] = sin(-2*PI*(double)loop/(double)fft_size);
+	}
+
+	//The bit-reversed addresses.
+	fill(brLookup,0,fft_size,0,1);
+}
 
 /*
 This function does a simply butterfly. It should not be used, rather use fft()
@@ -46,13 +63,8 @@ This function does the fft.
    dataB is an array with size N
    N is the size
 */
-void fft(double* dataA,double* dataB)
+void fft(double* dataA,double* dataB,double* wA,double* wB,int* bitRLocations)
 {
-	//First, calculate the twiddle factors. Store as a double for percision.
-	double wA[fft_size/2];		    //Twiddle Factors
-	double wB[fft_size/2];
-	int bitRLocations[fft_size];   //Bit reversed Locations
-
 	//Loop variables
 	int loop = 0;
 	int innerLoop = 0;
@@ -64,17 +76,6 @@ void fft(double* dataA,double* dataB)
 	double swapA;
 	double swapB;
 
-
-	for (loop=0;loop<fft_size/2;loop++)
-	{
-		//Calculate the cos term
-		wA[loop] = cos(2*PI*(double)loop/(double)fft_size);
-		//Calculate the sin term
-		wB[loop] = sin(-2*PI*(double)loop/(double)fft_size);
-	}
-
-	//The bit-reversed addresses.
-	fill(bitRLocations,0,fft_size,0,1);
 	//Reverse the data points
 	for (loop=0;loop<fft_size;loop++)
 	{
