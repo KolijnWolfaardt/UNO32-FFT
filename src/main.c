@@ -19,11 +19,12 @@ int main(void)
 
 	fft(data32A,data32B,tfstoreA,tfstoreB,brLookup);
 	
-	printf("\nDoing FFT with an a sine and a cosine.Cosine at 5, and sine at 2");
+	printf("\nDoing FFT with an a sine and a cosine.Cosine at 5, and sine at 2\n");
 	for (loop=0; loop<fft_size;loop++)
 	{
-		printf("%d\t%d+i%d\n",loop,data32A[loop],data32B[loop]);
+		printf("%d+i*%d,",loop,data32A[loop],data32B[loop]);
 	}
+	printf("\n");
 
 	return 0;
 }

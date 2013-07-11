@@ -8,7 +8,7 @@ floating point numbers and no math library.
 
 #include "fft.h"
 
-#define fft_size 64
+#define fft_size 128
 
 /*
 Note: not using structs or anything fancy, because this needs to go on a microprocessor.
@@ -134,7 +134,7 @@ void fft(int* dataA, int* dataB,int* wA,int* wB,int* bitRLocations)
 			{
 				//Get the data positions
 				pos1 = innerLoop+currButterfly;
-				pos2 = innerLoop+currButterfly+butterflySizeHalf;
+				pos2 = pos1+butterflySizeHalf;
 
 				tf_pos = currButterfly*fft_size>>loop; //This does the eqivalent of dividing by butteflySize
 
