@@ -17,11 +17,8 @@ floating point numbers and no math library.
 Note: not using structs or anything fancy, because this needs to go on a microprocessor.
 */
 void init(double* tfstoreA,double* tfStoreB,int* brLookup);
-void fft2point(double* dataA,double* dataB,int pos1,int pos2);
 void fft(double* data,double* result,double* tfstoreA,double* tfStoreB,int* brLookup);
 void fill(int* data,int start,int end,int num,int incNum);
-double complexMuxA(double a1,double b1,double a2,double b2);
-double complexMuxB(double a1,double b1,double a2,double b2);
 
 void init(double* tfstoreA,double* tfstoreB,int* brLookup)
 {
@@ -40,28 +37,10 @@ void init(double* tfstoreA,double* tfstoreB,int* brLookup)
 }
 
 /*
-This function does a simply butterfly. It should not be used, rather use fft()
-to do a 2 point fft if you need it.
-*/
-void fft2point(double* dataA,double* dataB,int pos1,int pos2)
-{
-	double temp1 = dataA[pos1];
-	double temp2 = dataB[pos1];
-
-	//First part of the butterfly
-	dataA[pos1] = temp1+dataA[pos2];
-	dataB[pos1] = temp2+dataB[pos2];
-
-	//Second part of the butterfly
-	dataA[pos2] = temp1-dataA[pos2];
-	dataB[pos2] = temp2-dataB[pos2];
-}
-
-/*
-This function does the fft. 
-   dataA is an array with size N
-   dataB is an array with size N
-   N is the size
+	This function does the fft. 
+	dataA is an array with size N
+	dataB is an array with size N
+	wA,wB and bitRLocations are arrays created by init()
 */
 void fft(double* dataA,double* dataB,double* wA,double* wB,int* bitRLocations)
 {
@@ -73,6 +52,7 @@ void fft(double* dataA,double* dataB,double* wA,double* wB,int* bitRLocations)
 	int butterflySize = 0;
 	int currButterfly = 0;
 	int pos1,pos2;
+	int tfLocation=0;
 	double swapA;
 	double swapB;
 
@@ -109,15 +89,26 @@ void fft(double* dataA,double* dataB,double* wA,double* wB,int* bitRLocations)
 				//Get the data positions
 				pos1 = innerLoop+currButterfly;
 				pos2 = innerLoop+currButterfly+butterflySize/2;
+				tfLocation = currButterfly*fft_size/(butterflySize);
 
-				///Pre-multiply all the second terms with the twiddle factors
-				swapA = complexMuxA(dataA[pos2],dataB[pos2],wA[currButterfly*fft_size/(butterflySize)],wB[currButterfly*fft_size/(butterflySize)]);
-				swapB = complexMuxB(dataA[pos2],dataB[pos2],wA[currButterfly*fft_size/(butterflySize)],wB[currButterfly*fft_size/(butterflySize)]);
-				dataA[pos2] = swapA;
-				dataB[pos2] = swapB;
-			
-				//Do the butterfly
-				fft2point(dataA,dataB,pos1,pos2);
+				//Multiply all the second terms with the twiddle factors
+				swapA = dataA[pos2]*wA[tfLocation] - dataB[pos2]*wB[tfLocation];
+				swapB = dataA[pos2]*wB[tfLocation] + dataB[pos2]*wA[tfLocation];
+
+				/*
+				This part was modified heavily from the original. The 2-point fft is done here,
+				but it uses the fact that two of the values are already stored in swapA and swapB,
+				and does the butterfly is a different order.
+				*/
+				//Second part of the butterfly
+				dataA[pos2] = dataA[pos1]-swapA;
+				dataB[pos2] = dataB[pos1]-swapB;
+
+				//First part of the butterfly
+				dataA[pos1] = dataA[pos1]+swapA;
+				dataB[pos1] = dataB[pos1]+swapB;
+
+
 			}
 		}
 	}
@@ -137,18 +128,4 @@ void fill(int* data,int start,int end,int num,int incNum)
 	//Split into two sections
 	fill(data,start,start+(end-start)/2,num,2*incNum);
 	fill(data,start+(end-start)/2,end,num+incNum,2*incNum);
-}
-
-
-/*
-Two functions for doing the complex multiplications
-*/
-double complexMuxA(double a1,double b1,double a2,double b2)
-{
-	return a1*a2-b1*b2;
-}
-
-double complexMuxB(double a1,double b1,double a2,double b2)
-{
-	return a1*b2+b1*a2;
 }
