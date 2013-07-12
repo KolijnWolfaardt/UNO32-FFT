@@ -32,21 +32,18 @@ double sinTable[] = {0,0.02454,0.04907,0.07356,0.09802,0.12241,0.14673,0.17096,
 
 void init(double* tfstoreA,double* tfstoreB,int* brLookup)
 {
-	int loop =0;
+  int loop =0;
 
-	for (loop=0;loop<fft_size/2;loop++)
-	{
-		//Calculate the cos term
-		//tfstoreA[loop] = cos(2*PI*(double)loop/(double)fft_size);
-		tfstoreA[loop] = lookUpCos(loop);
-		//Calculate the sin term
-		//tfstoreB[loop] = sin(-2*PI*(double)loop/(double)fft_size);
-		tfstoreB[loop] = lookUpSin(loop);
+  for (loop=0;loop<fft_size/2;loop++)
+  {
+    //Calculate the cos term
+    tfstoreA[loop] = lookUpCos(loop);
+    //Calculate the sin term
+    tfstoreB[loop] = lookUpSin(loop);
+  }
 
-	}
-
-	//The bit-reversed addresses.
-	fill(brLookup,0,fft_size,0,1);
+  //The bit-reversed addresses.
+  fill(brLookup,0,fft_size,0,1);
 }
 
 /*

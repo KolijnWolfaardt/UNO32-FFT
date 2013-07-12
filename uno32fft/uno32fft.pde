@@ -6,7 +6,7 @@
  */
 #import "fft.h"
 
-#define fft_size 128
+#define fft_size 64
 
 void setup()
 {                
@@ -17,6 +17,7 @@ void setup()
   double tfstoreA[fft_size/2];
   double tfstoreB[fft_size/2];
   int brLookup[fft_size];
+  int loop=0;
 
   
   // initialize the digital pin as an output.
@@ -29,6 +30,7 @@ void setup()
   int startTime = micros();
   init(tfstoreA,tfstoreB,brLookup);
   int endTime = micros();
+  
   Serial.print("\nInitializing took ");
   Serial.print(endTime-startTime);
   Serial.print("\n");
@@ -40,6 +42,7 @@ void setup()
   Serial.print("\n64 Point FFT took ");
   Serial.print(endTime-startTime);
   Serial.print("\n");
+  
   
   for (loop=0; loop<fft_size;loop++)
   {
@@ -53,7 +56,8 @@ void setup()
   
 }
 
-void loop() {
+void loop()
+{
   /*digitalWrite(2, HIGH);   // set the LED on
   fft(data32A,data32B,32);
   digitalWrite(2, LOW); 
